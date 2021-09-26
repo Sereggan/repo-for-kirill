@@ -5,24 +5,24 @@ import (
 	"sync"
 )
 
-var safeMap = SomeSafeStruct{visited: make(map[string]bool)}
-var wg *sync.WaitGroup
+var safeMap = SomeSafeStruct{visited: make(map[string]struct{})}
 
 type SomeSafeStruct struct {
 	mux     sync.Mutex
-	visited map[string]bool
+	visited map[string]struct{}
 }
 
 func (s *SomeSafeStruct) Add(key string) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	s.visited[key] = true
+	s.visited[key] = struct{}{}
 }
 
 func (s *SomeSafeStruct) Contains(key string) bool {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	return s.visited[key]
+	_, isVisited := s.visited[key]
+	return isVisited
 }
 
 type Fetcher interface {
@@ -33,7 +33,7 @@ type Fetcher interface {
 
 // Crawl uses fetcher to recursively crawl
 // pages starting with url, to a maximum of depth.
-func Crawl(url string, depth int, fetcher Fetcher) {
+func Crawl(url string, depth int, fetcher Fetcher, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	if depth <= 0 {
@@ -58,14 +58,14 @@ func Crawl(url string, depth int, fetcher Fetcher) {
 	for _, u := range urls {
 		wg.Add(1) //  Чтобы это говно не закрывалос раньше времени
 
-		go Crawl(u, depth-1, fetcher)
+		go Crawl(u, depth-1, fetcher, wg)
 	}
 }
 
 func main() {
-	wg = &sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	Crawl("https://golang.org/", 4, fetcher)
+	Crawl("https://golang.org/", 4, fetcher, wg)
 	//time.Sleep(time.Second)   не надо так делать наверное
 	wg.Wait()
 }
