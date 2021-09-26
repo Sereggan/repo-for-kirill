@@ -21,8 +21,8 @@ func (s *SomeSafeStruct) Add(key string) {
 func (s *SomeSafeStruct) Contains(key string) bool {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	_, isVisited := s.visited[key]
-	return isVisited
+	_, ok := s.visited[key]
+	return ok
 }
 
 type Fetcher interface {
